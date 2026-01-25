@@ -19,20 +19,20 @@ export async function onRequest(context) {
           <h1 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
             🚀 部署成功，待配置
           </h1>
-          <p class="text-gray-600 mb-6">还差最后两步，即可开启你的正经图床：</p>
+          <p class="text-gray-600 mb-6">还差最后两步，即可开启云端画廊：</p>
           <div class="space-y-4">
             <div class="flex items-start">
               <span class="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mt-1 mr-3">1</span>
               <div>
                 <p class="font-semibold">绑定 R2 存储桶</p>
-                <p class="text-sm text-gray-500">Settings -> Functions -> 绑定 R2 (变量名填 <b>BUCKET</b>)</p>
+                <p class="text-sm text-gray-500">设置 -> 绑定 -> 添加资源绑定(变量名填<b>BUCKET</b>)</p>
               </div>
             </div>
             <div class="flex items-start">
               <span class="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mt-1 mr-3">2</span>
               <div>
                 <p class="font-semibold">设置管理密码</p>
-                <p class="text-sm text-gray-500">Settings -> Variables -> 添加 <b>ADMIN_PASSWORD</b></p>
+                <p class="text-sm text-gray-500">设置 -> 变量和机密 -> 添加变量名<b>ADMIN_PASSWORD</b></p>
               </div>
             </div>
           </div>
