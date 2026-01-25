@@ -1,0 +1,4 @@
+.wrangler/
+
+# dependencies
+node_modules/

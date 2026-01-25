@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 - 页面未找到</title>
+    <link rel="shortcut icon" href="./logo.ico" type="image/x-icon">
+    <link rel="icon" href="./logo.svg" type="image/svg+xml">
+    <script src="./js/tailwindcss.js"></script>
+    <link rel="stylesheet" href="./css/theme.css">
+</head>
+<body class="min-h-screen relative morphing-bg">
+
+    <div class="geometric-bg">
+        <div class="geo-shape geo-circle"></div>
+        <div class="geo-shape geo-square"></div>
+        <div class="geo-shape geo-circle"></div>
+        <div class="geo-shape geo-square"></div>
+        <div class="geo-shape geo-triangle"></div>
+        <div class="geo-shape geo-circle"></div>
+        <div class="geo-shape geo-square"></div>
+        <div class="geo-shape geo-circle"></div>
+    </div>
+
+    <div class="cursor-glow" id="cursorGlow"></div>
+
+    <nav class="fixed top-4 left-0 right-0 z-50 px-8 flex items-center justify-between fade-in-up stagger-1">
+        <div class="relative h-16 flex items-center">
+            <div class="absolute -inset-4 bg-gradient-to-r from-[var(--accent)]/20 via-[var(--accent-2)]/20 to-[var(--accent-3)]/20 blur-2xl -z-10 rotate-slow"></div>
+            <h1 class="serif text-3xl md:text-4xl font-bold text-[var(--accent)] tracking-wider">
+                云端画廊
+            </h1>
+        </div>
+        <button onclick="toggleTheme()" class="glass-panel w-14 h-14 rounded-full btn-action elastic-btn flex items-center justify-center">
+            <i data-lucide="sun" id="theme-icon-light" class="w-6 h-6 text-[var(--accent)] hidden"></i>
+            <i data-lucide="moon" id="theme-icon-dark" class="w-6 h-6 text-[var(--accent)]"></i>
+        </button>
+    </nav>
+
+    <div class="flex items-center justify-center min-h-screen px-6 relative z-10">
+        <div class="glass-panel rounded-[3rem] p-10 md:p-20 max-w-2xl w-full text-center fade-in-up stagger-2 rainbow-border">
+            <div class="relative mb-8">
+                <div class="text-[8rem] md:text-[10rem] font-bold gradient-text leading-none tracking-tight">
+                    404
+                </div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <div class="w-32 h-32 md:w-40 md:h-40 rounded-full bg-gradient-to-br from-[var(--accent)]/20 to-[var(--accent-2)]/20 pulse-ring"></div>
+                </div>
+            </div>
+            
+            <h2 class="text-2xl md:text-3xl font-light mb-4 tracking-wider">
+                <span class="text-[var(--accent)]">✨</span>
+                <span class="gradient-typing">页面未找到</span>
+                <span class="text-[var(--accent)]">✨</span>
+            </h2>
+            
+            <p class="text-lg opacity-60 mb-10 tracking-wide font-light max-w-md mx-auto">
+                抱歉，你闯入了未开放的私人区域
+            </p>
+
+            <div class="flex justify-center">
+                <a href="/" class="btn-action glow-button elastic-btn px-10 py-5 bg-gradient-to-r from-[var(--accent)] via-[var(--accent-2)] to-[var(--accent-3)] text-white rounded-2xl font-bold text-lg hover:shadow-2xl transition-all flex items-center justify-center gap-3">
+                    <i data-lucide="home" class="w-6 h-6"></i>
+                    <span>返回首页</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script src="./js/lucide.min.js"></script>
+    <script>
+        lucide.createIcons();
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const isDark = saved === 'dark' || (!saved && prefersDark);
+            document.body.classList.toggle('dark', isDark);
+            document.body.classList.toggle('light', !isDark);
+            updateThemeIcons(isDark);
+        }
+
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('dark');
+            document.body.classList.toggle('light', !isDark);
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateThemeIcons(isDark);
+        }
+
+        function updateThemeIcons(isDark) {
+            document.getElementById('theme-icon-dark').classList.toggle('hidden', isDark);
+            document.getElementById('theme-icon-light').classList.toggle('hidden', !isDark);
+        }
+
+        initTheme();
+
+        const cursorGlow = document.getElementById('cursorGlow');
+        
+        document.addEventListener('mousemove', (e) => {
+            cursorGlow.style.left = e.clientX + 'px';
+            cursorGlow.style.top = e.clientY + 'px';
+        });
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>云端画廊 | 图床</title>
+    <link rel="shortcut icon" href="./logo.ico" type="image/x-icon">
+    <link rel="icon" href="./logo.svg" type="image/svg+xml">
+    <script src="./js/tailwindcss.js"></script>
+    <link rel="stylesheet" href="./css/theme.css">
+</head>
+<body class="min-h-screen relative morphing-bg">
+
+    <div class="geometric-bg">
+        <div class="geo-shape geo-circle"></div>
+        <div class="geo-shape geo-square"></div>
+        <div class="geo-shape geo-circle"></div>
+        <div class="geo-shape geo-square"></div>
+        <div class="geo-shape geo-triangle"></div>
+        <div class="geo-shape geo-circle"></div>
+        <div class="geo-shape geo-square"></div>
+        <div class="geo-shape geo-circle"></div>
+    </div>
+
+    <div class="cursor-glow" id="cursorGlow"></div>
+
+    <nav class="fixed top-4 left-0 right-0 z-50 px-8 flex items-center justify-between fade-in-up stagger-1">
+        <div class="relative h-16 flex items-center">
+            <div class="absolute -inset-4 bg-gradient-to-r from-[var(--accent)]/20 via-[var(--accent-2)]/20 to-[var(--accent-3)]/20 blur-2xl -z-10 rotate-slow"></div>
+            <h1 class="serif text-3xl md:text-4xl font-bold text-[var(--accent)] tracking-wider">
+                云端画廊
+            </h1>
+        </div>
+        <button onclick="toggleTheme()" class="glass-panel w-14 h-14 rounded-full btn-action elastic-btn flex items-center justify-center">
+            <i data-lucide="sun" id="theme-icon-light" class="w-6 h-6 text-[var(--accent)] hidden"></i>
+            <i data-lucide="moon" id="theme-icon-dark" class="w-6 h-6 text-[var(--accent)]"></i>
+        </button>
+    </nav>
+
+    <header class="pt-32 pb-8 text-center relative z-10">
+        <p class="text-2xl md:text-2xl tracking-widest opacity-60 font-light mt-4 fade-in-up stagger-2" style="max-width: 600px; margin: 1rem auto;">
+            <span class="typing-effect inline-block">
+                <span class="text-[var(--accent)]">✨</span>
+                <span class="gradient-typing">珍藏每一刻的美好瞬间</span>
+                <span class="text-[var(--accent)]">✨</span>
+            </span>
+        </p>
+    </header>
+
+    <div class="max-w-4xl mx-auto px-4 md:px-12 relative z-10">
+        <div id="upload-page" class="glass-panel rounded-[3rem] p-6 md:p-16 mb-32 fade-in-up stagger-4 rainbow-border">
+            <div class="flex flex-col gap-8 max-w-3xl mx-auto">
+                <div id="drop-zone" class="upload-zone border-2 border-dashed border-[var(--accent)]/30 rounded-3xl py-16 flex flex-col items-center justify-center gap-6 cursor-pointer transition-all group relative z-10">
+                    <div class="radar-scan"></div>
+                    <div class="pulse-ring">
+                        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-[var(--accent)]/20 to-[var(--accent-2)]/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                            <i data-lucide="cloud-upload" class="w-10 h-10 text-[var(--accent)] floating"></i>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <span id="status-text" class="text-lg tracking-wide opacity-70 block mb-2">点击或拖拽上传文件</span>
+                        <span class="text-sm opacity-40">支持 JPG、JPEG、PNG、GIF、WebP、SVG、ICO、MP4、MOV、WebM、MP3、WAV</span>
+                    </div>
+                    <input type="file" id="fileInput" hidden multiple accept="*/*">
+                </div>
+                <div class="relative">
+                    <div class="relative">
+                        <span class="absolute left-6 top-1/2 -translate-y-[calc(-50%+1.1rem)] pointer-events-none z-10 leading-none" style="filter: none; text-shadow: none;">🔐</span>
+                        <input type="password" id="pw" placeholder="输入访问密钥" 
+                               class="w-full glass-input rounded-2xl pl-12 pr-6 py-4 text-sm tracking-wider placeholder:opacity-50">
+                    </div>
+                    <div class="relative mt-4">
+                        <span class="absolute left-6 top-1/2 -translate-y-[calc(-50%+1.1rem)] pointer-events-none z-10 leading-none" style="filter: none; text-shadow: none;">📁</span>
+                        <input type="text" id="folder-path" placeholder="文件夹路径（可选）" 
+                               class="w-full glass-input rounded-2xl pl-12 pr-6 py-4 text-sm tracking-wider placeholder:opacity-50">
+                    </div>
+                </div>
+                
+                <div id="file-preview" class="hidden">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm tracking-wider opacity-70">已选择 <span id="file-count">0</span> 个文件</span>
+                        <button onclick="clearFiles()" class="btn-action elastic-btn px-4 py-2 text-sm border border-red-500/40 text-red-400/90 rounded-full hover:bg-red-500 hover:text-white transition-all flex items-center gap-2">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                            清空
+                        </button>
+                    </div>
+                    <div id="file-list" class="max-h-48 overflow-y-auto space-y-2 mb-4"></div>
+                    <button onclick="confirmUpload()" class="btn-action glow-button elastic-btn w-full px-8 py-5 bg-gradient-to-r from-[var(--accent)] via-[var(--accent-2)] to-[var(--accent-3)] text-white rounded-2xl font-bold text-lg hover:shadow-2xl transition-all flex items-center justify-center gap-3">
+                        <i data-lucide="upload" class="w-6 h-6"></i>
+                        <span>确认上传</span>
+                    </button>
+                </div>
+                
+                <button onclick="loadList()" class="btn-action glow-button elastic-btn px-8 py-5 bg-gradient-to-r from-[var(--accent)] via-[var(--accent-2)] to-[var(--accent-3)] text-white rounded-2xl font-bold text-lg hover:shadow-2xl transition-all flex items-center justify-center gap-3">
+                    <i data-lucide="sparkles" class="w-6 h-6"></i>
+                    <span>探索图库</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="gallery-page" class="hidden">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-8">
+                <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3 sm:gap-4">
+                    <button onclick="showUploadPage()" class="btn-action elastic-btn px-4 py-2 sm:px-6 sm:py-3 glass-panel rounded-full flex items-center gap-2 text-sm sm:text-base">
+                        <i data-lucide="arrow-left" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <span class="hidden sm:inline">返回上传</span>
+                        <span class="sm:hidden">返回</span>
+                    </button>
+                    <button onclick="loadList()" class="btn-action elastic-btn px-4 py-2 sm:px-6 sm:py-3 glass-panel rounded-full flex items-center gap-2 text-sm sm:text-base">
+                        <i data-lucide="refresh-cw" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <span>刷新</span>
+                    </button>
+                </div>
+                <div class="flex flex-wrap items-center justify-center sm:justify-end gap-3 sm:gap-4">
+                    <button onclick="toggleSelectAll()" class="btn-action elastic-btn px-4 py-2 sm:px-6 sm:py-3 glass-panel rounded-full flex items-center gap-2 text-sm sm:text-base">
+                        <i data-lucide="check-square" id="select-all-icon" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <span id="select-all-text">全选</span>
+                    </button>
+                    <button onclick="deleteSelected()" class="btn-action elastic-btn px-4 py-2 sm:px-6 sm:py-3 bg-red-500/20 text-red-400/90 border border-red-500/40 rounded-full hover:bg-red-500 hover:text-white transition-all flex items-center gap-2 text-sm sm:text-base">
+                        <i data-lucide="trash-2" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <span class="hidden sm:inline">删除选中</span>
+                        <span class="sm:hidden">删除</span>
+                    </button>
+                </div>
+            </div>
+            <div id="imageGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 gap-10"></div>
+        </div>
+    </div>
+
+    <div id="preview-overlay" class="fixed inset-0 z-[100] flex flex-col items-center justify-center p-6" onclick="closePreview()">
+        <button class="absolute top-10 right-10 text-white/40 hover:text-white transition-colors btn-action elastic-btn rounded-full p-4 group">
+            <i data-lucide="x" class="w-12 h-12 group-hover:rotate-90 transition-transform duration-300"></i>
+        </button>
+        <div id="preview-container" class="max-w-full max-h-[85vh] object-contain shadow-[0_0_100px_rgba(var(--accent-rgb),0.4)] rounded-3xl card-shine overflow-hidden">
+            <img id="preview-img" src="" class="w-full h-full object-contain hidden">
+            <video id="preview-video" class="w-full h-full object-contain hidden" controls></video>
+        </div>
+        <div class="mt-8 flex flex-col items-center gap-4">
+            <p id="preview-name" class="text-[var(--accent)] tracking-widest text-lg font-light"></p>
+            <div class="flex gap-6">
+                <button onclick="copyMd(currentPreviewKey)" class="btn-action elastic-btn px-8 py-3 bg-gradient-to-r from-[var(--accent)] to-[var(--accent-2)] text-white rounded-full text-base flex items-center gap-3">
+                    <i data-lucide="link" class="w-5 h-5"></i>
+                    复制链接
+                </button>
+                <button onclick="downloadImage(currentPreviewKey)" class="btn-action elastic-btn px-8 py-3 bg-white/10 hover:bg-white/20 text-white rounded-full text-base flex items-center gap-3 border border-white/20">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    下载文件
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="glass-panel px-10 py-5 rounded-full border-[var(--accent)]/40 shadow-2xl backdrop-blur-3xl">
+        <span id="toast-msg" class="text-base tracking-wide font-light">初始化中...</span>
+    </div>
+    
+    <script src="./js/lucide.min.js"></script>
+    <script src="./js/app.js"></script>
+
+</body>
+</html>
