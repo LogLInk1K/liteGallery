@@ -1,0 +1,14 @@
+name = "lite-gallery-api"
+main = "index.js"
+compatibility_date = "2026-01-26"
+
+[[r2_buckets]]
+binding = "BUCKET"       # ❌ 请勿修改此变量名
+bucket_name = "R2"       # ✅ 填入 R2 桶名
+
+[vars]
+ALLOWED_ORIGIN = "https://up.1k.ink"   # ✅ 填入你的前端域名
+ADMIN_PASSWORD = "管理密码"        # ✅ 建议在控制台加密存储
+
+[observability]
+enabled = true
