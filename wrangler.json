@@ -1,0 +1,13 @@
+{
+  "name": "lite-gallery",
+  "pages_build_output_dir": "/",
+  "vars": {
+    "ADMIN_PASSWORD": "在此输入你的管理员密码"
+  },
+  "r2_buckets": [
+    {
+      "binding": "BUCKET",
+      "preview_bucket_name": "你的R2桶名称"
+    }
+  ]
+}

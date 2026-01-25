@@ -2,9 +2,54 @@ export async function onRequest(context) {
   const { request, env } = context; // Pages 通过 context 传递参数
   const url = new URL(request.url);
   const path = url.pathname;
+  // --- 1. 新手引导：检查配置是否完整 ---
+  // 如果 BUCKET 没绑定或密码没设，直接返回一个友好的引导页面
+  if (!env.BUCKET || !env.ADMIN_PASSWORD) {
+    return new Response(`
+      <!DOCTYPE html>
+      <html lang="zh-CN">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>初始化配置 | LiteGallery</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+      </head>
+      <body class="bg-gray-50 flex items-center justify-center min-h-screen">
+        <div class="max-w-md w-full bg-white shadow-lg rounded-2xl p-8 border border-gray-100">
+          <h1 class="text-2xl font-bold text-gray-800 mb-4 flex items-center">
+            🚀 部署成功，待配置
+          </h1>
+          <p class="text-gray-600 mb-6">还差最后两步，即可开启你的正经图床：</p>
+          <div class="space-y-4">
+            <div class="flex items-start">
+              <span class="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mt-1 mr-3">1</span>
+              <div>
+                <p class="font-semibold">绑定 R2 存储桶</p>
+                <p class="text-sm text-gray-500">Settings -> Functions -> 绑定 R2 (变量名填 <b>BUCKET</b>)</p>
+              </div>
+            </div>
+            <div class="flex items-start">
+              <span class="bg-blue-100 text-blue-600 rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mt-1 mr-3">2</span>
+              <div>
+                <p class="font-semibold">设置管理密码</p>
+                <p class="text-sm text-gray-500">Settings -> Variables -> 添加 <b>ADMIN_PASSWORD</b></p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-8 p-4 bg-amber-50 rounded-lg border border-amber-100">
+            <p class="text-amber-700 text-sm font-medium">⚠️ 重要：设置完成后，请务必在 Deployments 页面点击 "Retry deployment" 重新部署！</p>
+          </div>
+          <button onclick="window.location.reload()" class="w-full mt-6 bg-blue-600 text-white py-3 rounded-xl font-semibold hover:bg-blue-700 transition">已完成设置，刷新页面</button>
+        </div>
+      </body>
+      </html>
+    `, {
+      headers: { "Content-Type": "text/html;charset=UTF-8" }
+    });
+  }
+
   const auth = request.headers.get("x-polo-auth");
   const ALLOWED_ORIGIN = env.ALLOWED_ORIGIN || "*";
-
   const corsHeaders = {
     "Access-Control-Allow-Origin": ALLOWED_ORIGIN,
     "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
