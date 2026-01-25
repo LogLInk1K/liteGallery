@@ -18,7 +18,7 @@
 
 [**👉 点击此处进入 Cloudflare Pages 控制台 👈**](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages)
 
-1. 选择 **连接到 Git**，并授权访问你刚才 Fork 的 `liteGallery` 仓库。
+1. 选择 **导入现有 Git 存储库**，并授权访问你刚才 Fork 的 `liteGallery` 仓库。
 
 2. 点击 **保存并部署**。
 
