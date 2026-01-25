@@ -1,5 +1,6 @@
-const API_URL = 'https://3cdn.1k.ink'; 
-const IMG_HOST = 'https://3cdn.1k.ink'; 
+const API_URL = ''; 
+const IMG_HOST = API_URL; 
+
 let currentPreviewKey = '';
 
 function initTheme() {
