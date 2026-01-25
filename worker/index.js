@@ -13,7 +13,7 @@ export default {
    * list: (arg0: { limit: number; }) => any; 
    * put: (arg0: string, arg1: any, arg2: { httpMetadata: { contentType: any; cacheControl: string; }; }) => any; 
    * delete: (arg0: string) => any; 
-   * get: (arg0: string, arg1: { range: any; }) => any; 
+   * get: (arg0: string, arg1?: { range: any; }) => any;
    * }; 
    * }} env
    */
@@ -35,7 +35,6 @@ export default {
     try {
       // --- 1. 管理接口 (POST/DELETE/LIST) ---
       if (["POST", "DELETE"].includes(request.method) || (request.method === "GET" && path === "/list")) {
-        // 安全第一：严格校验密码
         if (!auth || auth !== env.ADMIN_PASSWORD) {
           return new Response("Unauthorized", { status: 401, headers: corsHeaders });
         }
@@ -49,8 +48,8 @@ export default {
 
         if (path === "/upload" && request.method === "POST") {
           const formData = await request.formData();
-          const files = formData.getAll("file"); // 严格支持多文件
-          const folder = formData.get("folder") || ""; // 读取目录路径
+          const files = formData.getAll("file");
+          const folder = formData.get("folder") || "";
 
           if (files.length === 0) return new Response("No files uploaded", { status: 400, headers: corsHeaders });
 
@@ -58,13 +57,11 @@ export default {
           const cleanFolder = folder ? `${folder.replace(/\/+$/, '')}/` : "";
 
           for (const file of files) {
-            if (file.size > 100 * 1024 * 1024) continue; // 跳过超过100MB的文件
+            if (file.size > 100 * 1024 * 1024) continue;
 
-            // 安全加固：净化文件名并强制 WebP 命名逻辑
             let fileName = file.name.replace(/[^\w.-]/g, '_'); 
             let contentType = file.type;
 
-            // 如果前端压了 WebP，确保后缀和 MIME 匹配
             if (contentType.startsWith('image/') && !contentType.includes('svg')) {
                if (!fileName.toLocaleLowerCase().endsWith('.webp')) {
                   fileName = fileName.replace(/\.[^/.]+$/, "") + ".webp";
@@ -72,7 +69,6 @@ export default {
                contentType = 'image/webp'; 
             }
 
-            // 构造 Key：目录 + 时间戳 - 文件名
             const key = `${cleanFolder}${Date.now()}-${fileName}`;
             
             await env.BUCKET.put(key, file.stream(), { 
@@ -97,31 +93,60 @@ export default {
         }
       }
 
-      // --- 2. 公开读取 (GET) ---
-      const objectKey = path.slice(1);
+      const objectKey = decodeURIComponent(path).replace(/^\/+|\/+$/g, '');
+
       if (objectKey && request.method === "GET") {
         const allowedExtensions = /\.(webp|jpg|jpeg|png|gif|svg|ico|mp4|mov|webm|mp3|wav)$/i;
         if (!allowedExtensions.test(objectKey)) {
           return new Response("Forbidden Type", { status: 403, headers: corsHeaders });
         }
 
-        const range = request.headers.get("range");
-        const object = await env.BUCKET.get(objectKey, { range });
+        try {
+          // 2. 获取 Range 头
+          const rangeHeader = request.headers.get("range");
+          
+          // 3. 执行获取操作
+          let object;
+          if (rangeHeader) {
+            // 如果有 range 请求（如视频预览），带 range 获取
+            object = await env.BUCKET.get(objectKey, { range: rangeHeader });
+          } else {
+            // 普通图片请求，不带 range 参数（最稳健）
+            object = await env.BUCKET.get(objectKey);
+          }
 
-        if (object === null) return new Response("Not Found", { status: 404, headers: corsHeaders });
-        
-        const headers = new Headers(corsHeaders);
-        object.writeHttpMetadata(headers);
-        headers.set("etag", object.httpEtag);
-        // 核心需求：缓存一年
-        headers.set("Cache-Control", "public, max-age=31536000, immutable");
+          if (object === null) {
+            return new Response(`Object Not Found: ${objectKey}`, { status: 404, headers: corsHeaders });
+          }
+          
+          const headers = new Headers(corsHeaders);
+          
+          // 4. 安全设置元数据
+          try {
+            object.writeHttpMetadata(headers);
+          } catch (e) {
+            headers.set("Content-Type", object.httpMetadata?.contentType || "image/webp");
+          }
 
-        const status = object.range ? 206 : 200;
-        return new Response(object.body, { headers, status });
+          headers.set("etag", object.httpEtag);
+          // 核心需求：边缘缓存一年
+          headers.set("Cache-Control", "public, max-age=31536000, immutable");
+
+          const status = object.range ? 206 : 200;
+          return new Response(object.body, { headers, status });
+
+        } catch (r2Error) {
+          // 如果还是报错，把详细信息吐出来
+          return new Response(`Detailed R2 Error: ${r2Error.message} (Key: ${objectKey})`, { 
+            status: 500, 
+            headers: corsHeaders 
+          });
+        }
       }
 
     } catch (e) {
-      return new Response(e.message, { status: 500, headers: corsHeaders });
+      // 将错误信息抛出，方便调试
+      return new Response("Worker Error: " + e.message, { status: 500, headers: corsHeaders });
     }
 
     return new Response("Not Found", { status: 404, headers: corsHeaders });
