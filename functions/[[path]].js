@@ -139,36 +139,40 @@ export async function onRequest(context) {
 
       try {
         const rangeHeader = request.headers.get("range");
+        // 1. 获取对象
         const object = await env.BUCKET.get(objectKey, {
           range: rangeHeader || undefined,
         });
 
         if (object === null) return context.next();
 
-        // 1. 基础响应头
         const headers = new Headers(corsHeaders);
         
-        // 2. 关键：手动提取元数据，避免 writeHttpMetadata 带来的不可控行为
+        // 2. 基础元数据设置
         const contentType = object.httpMetadata?.contentType || "application/octet-stream";
         headers.set("Content-Type", contentType);
         headers.set("etag", object.httpEtag);
         headers.set("Accept-Ranges", "bytes");
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
-        headers.set("Content-Encoding", "identity"); // 严禁压缩
+        headers.set("Content-Encoding", "identity");
 
-        // 3. 处理 Range 响应头
+        // 3. 处理状态码和 Range 头
+        let status = 200;
+
         if (object.range) {
-          // R2 在返回 range 对象时，会包含 offset, length 和 size
-          // 必须手动拼这个 Content-Range，浏览器播放器才能识别
-          const { offset, length, size } = object.range;
-          headers.set("Content-Range", `bytes ${offset}-${offset + length - 1}/${size}`);
+          status = 206;
+          // 使用可选链和默认值，防止 500 报错
+          const offset = object.range.offset ?? 0;
+          const length = object.range.length ?? object.size;
+          const totalSize = object.size ?? length;
+          
+          headers.set("Content-Range", `bytes ${offset}-${offset + length - 1}/${totalSize}`);
           headers.set("Content-Length", length.toString());
         } else {
-          headers.set("Content-Length", object.size.toString());
+          headers.set("Content-Length", (object.size ?? 0).toString());
         }
 
-        const status = object.range ? 206 : 200;
-
+        // 4. 返回响应
         return new Response(object.body, {
           headers,
           status,
@@ -181,10 +185,12 @@ export async function onRequest(context) {
         });
 
       } catch (r2Error) {
-        return new Response(`R2 Error: ${r2Error.message}`, { status: 500, headers: corsHeaders });
+        // 如果这里报错，控制台会打印具体原因
+        console.error("R2 Read Error:", r2Error);
+        return new Response(`Server Error: ${r2Error.message}`, { status: 500, headers: corsHeaders });
       }
     }
-    
+
   } catch (e) {
     return new Response("Worker Error: " + e.message, { status: 500, headers: corsHeaders });
   }
