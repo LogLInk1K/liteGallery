@@ -1,5 +1,5 @@
 const API_URL = ''; 
-const IMG_HOST = API_URL; 
+const IMG_HOST = window.location.origin; 
 
 let currentPreviewKey = '';
 
