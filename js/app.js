@@ -415,7 +415,18 @@ async function confirmUpload() {
 
 // 辅助函数：将图片压缩并转换为 WebP
 async function compressImage(file) {
-    if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
+    // 如果不是图片或者是 SVG（SVG不需要压缩），直接返回原文件
+    if (!file.type.startsWith('image/') || file.type.includes('svg')) {
+        return file;
+    }
+
+    // 如果已经是 webp 格式，直接返回原文件
+    if (file.type === 'image/webp') {
+        return file;
+    }
+
+    // 如果是 gif，保持原格式（canvas 无法处理动图）
+    if (file.type === 'image/gif') {
         return file;
     }
 
