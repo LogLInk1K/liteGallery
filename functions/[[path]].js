@@ -139,38 +139,45 @@ export async function onRequest(context) {
 
       try {
         const rangeHeader = request.headers.get("range");
-        let object;
-        
-        // 1. 获取对象
-        if (rangeHeader) {
-          object = await env.BUCKET.get(objectKey, { 
-            range: request.headers, // 建议直接透传整个 headers，让 R2 处理 if-range 等复杂逻辑
-          });
-        } else {
-          object = await env.BUCKET.get(objectKey);
-        }
+        const object = await env.BUCKET.get(objectKey, {
+          range: rangeHeader || undefined,
+        });
 
-        if (object === null) return context.next(); 
-        
+        if (object === null) return context.next();
+
+        // 1. 基础响应头
         const headers = new Headers(corsHeaders);
         
-        // 2. 写入 R2 的元数据（包括 Content-Type, Content-Range 等）
-        object.writeHttpMetadata(headers);
+        // 2. 关键：手动提取元数据，避免 writeHttpMetadata 带来的不可控行为
+        const contentType = object.httpMetadata?.contentType || "application/octet-stream";
+        headers.set("Content-Type", contentType);
         headers.set("etag", object.httpEtag);
-        
-        // 3. 关键：告诉浏览器支持 Range 请求
         headers.set("Accept-Ranges", "bytes");
-        
-        // 4. 保持强缓存
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
+        headers.set("Content-Encoding", "identity"); // 严禁压缩
 
-        // 5. 构造响应
-        // 注意：如果 object.range 存在，R2 返回的 status 应该是 206
+        // 3. 处理 Range 响应头
+        if (object.range) {
+          // R2 在返回 range 对象时，会包含 offset, length 和 size
+          // 必须手动拼这个 Content-Range，浏览器播放器才能识别
+          const { offset, length, size } = object.range;
+          headers.set("Content-Range", `bytes ${offset}-${offset + length - 1}/${size}`);
+          headers.set("Content-Length", length.toString());
+        } else {
+          headers.set("Content-Length", object.size.toString());
+        }
+
         const status = object.range ? 206 : 200;
-        
-        return new Response(object.body, { 
-          headers, 
-          status 
+
+        return new Response(object.body, {
+          headers,
+          status,
+          cf: {
+            encodeBodyTag: false,
+            minify: { javascript: false, css: false, html: false },
+            mirage: false,
+            polish: "off"
+          }
         });
 
       } catch (r2Error) {
