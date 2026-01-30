@@ -60,9 +60,22 @@ export async function onRequest(context) {
   // 1. 处理预检请求
   if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // 2. 【新增】静态资源避让：如果是根路径或前端文件，交给 Pages 托管
-  // 这样你的 index.html, style.css 和 js/*.js 才能正常加载
-  const isStaticAsset = path === "/" || /\.(html|css|js|map|json|png|jpg|ico)$/i.test(path);
+  // 2. 静态资源避让
+  // 只有真正支撑页面显示的资源才走 Pages 托管
+  const staticFiles = [
+    "/",
+    "/index.html",
+    "/404.html",
+    "/theme.css",
+    "/logo.ico",
+    "/logo.svg",
+    "/favicon.ico"
+  ];
+
+  const isStaticAsset = 
+    staticFiles.includes(path) || 
+    path.startsWith("/js/");
+
   if (isStaticAsset && request.method === "GET") {
     return context.next(); 
   }
