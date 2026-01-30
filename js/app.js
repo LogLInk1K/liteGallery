@@ -415,8 +415,7 @@ async function confirmUpload() {
 
 // 辅助函数：将图片压缩并转换为 WebP
 async function compressImage(file) {
-    // 如果不是图片或者是 SVG（SVG不需要压缩），直接返回原文件
-    if (!file.type.startsWith('image/') || file.type.includes('svg')) {
+    if (!file.type.startsWith('image/') || file.type.includes('svg') || file.type.includes('gif')) {
         return file;
     }
 
