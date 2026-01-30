@@ -137,18 +137,22 @@ export async function onRequest(context) {
         return new Response("Forbidden Type", { status: 403, headers: corsHeaders });
       }
 
-      try {
+try {
         const rangeHeader = request.headers.get("range");
-        // 1. 获取对象
-        const object = await env.BUCKET.get(objectKey, {
-          range: rangeHeader || undefined,
-        });
+        
+        // --- 修改点：动态构造参数对象，确保类型绝对正确 ---
+        const getOptions = {};
+        if (rangeHeader) {
+          getOptions.range = request.headers; // 直接透传 Headers 对象，SDK 最推荐这种做法
+        }
+
+        const object = await env.BUCKET.get(objectKey, getOptions);
+        // ----------------------------------------------
 
         if (object === null) return context.next();
 
         const headers = new Headers(corsHeaders);
         
-        // 2. 基础元数据设置
         const contentType = object.httpMetadata?.contentType || "application/octet-stream";
         headers.set("Content-Type", contentType);
         headers.set("etag", object.httpEtag);
@@ -156,12 +160,10 @@ export async function onRequest(context) {
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
         headers.set("Content-Encoding", "identity");
 
-        // 3. 处理状态码和 Range 头
         let status = 200;
 
         if (object.range) {
           status = 206;
-          // 使用可选链和默认值，防止 500 报错
           const offset = object.range.offset ?? 0;
           const length = object.range.length ?? object.size;
           const totalSize = object.size ?? length;
@@ -172,7 +174,6 @@ export async function onRequest(context) {
           headers.set("Content-Length", (object.size ?? 0).toString());
         }
 
-        // 4. 返回响应
         return new Response(object.body, {
           headers,
           status,
@@ -185,8 +186,6 @@ export async function onRequest(context) {
         });
 
       } catch (r2Error) {
-        // 如果这里报错，控制台会打印具体原因
-        console.error("R2 Read Error:", r2Error);
         return new Response(`Server Error: ${r2Error.message}`, { status: 500, headers: corsHeaders });
       }
     }
