@@ -527,7 +527,7 @@ async function deleteImg(key) {
 }
 
 function copyMd(key) {
-    navigator.clipboard.writeText(`![](${IMG_HOST}/${key})`);
+    navigator.clipboard.writeText(`${IMG_HOST}/${key}`);
     showToast('📋 链接已复制到剪贴板');
 }
 
