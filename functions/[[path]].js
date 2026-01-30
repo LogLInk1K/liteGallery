@@ -128,7 +128,7 @@ export async function onRequest(context) {
       }
     }
 
-    // --- 2. 公开读取 (GET) ---
+// --- 2. 公开读取 (GET) ---
     const objectKey = decodeURIComponent(path).replace(/^\/+|\/+$/g, '');
 
     if (objectKey && request.method === "GET") {
@@ -140,36 +140,44 @@ export async function onRequest(context) {
       try {
         const rangeHeader = request.headers.get("range");
         let object;
+        
+        // 1. 获取对象
         if (rangeHeader) {
-          object = await env.BUCKET.get(objectKey, { range: rangeHeader });
+          object = await env.BUCKET.get(objectKey, { 
+            range: request.headers, // 建议直接透传整个 headers，让 R2 处理 if-range 等复杂逻辑
+          });
         } else {
           object = await env.BUCKET.get(objectKey);
         }
 
-        if (object === null) {
-          // 如果 R2 没找到，有可能是请求了不存在的静态资源，交给 Pages 兜底
-          return context.next(); 
-        }
+        if (object === null) return context.next(); 
         
         const headers = new Headers(corsHeaders);
-        try {
-          object.writeHttpMetadata(headers);
-        } catch (e) {
-          headers.set("Content-Type", object.httpMetadata?.contentType || "image/webp");
-        }
-
+        
+        // 2. 写入 R2 的元数据（包括 Content-Type, Content-Range 等）
+        object.writeHttpMetadata(headers);
         headers.set("etag", object.httpEtag);
-        // 核心需求：边缘强缓存一年
+        
+        // 3. 关键：告诉浏览器支持 Range 请求
+        headers.set("Accept-Ranges", "bytes");
+        
+        // 4. 保持强缓存
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
 
+        // 5. 构造响应
+        // 注意：如果 object.range 存在，R2 返回的 status 应该是 206
         const status = object.range ? 206 : 200;
-        return new Response(object.body, { headers, status });
+        
+        return new Response(object.body, { 
+          headers, 
+          status 
+        });
 
       } catch (r2Error) {
-        return new Response(`Detailed R2 Error: ${r2Error.message}`, { status: 500, headers: corsHeaders });
+        return new Response(`R2 Error: ${r2Error.message}`, { status: 500, headers: corsHeaders });
       }
     }
-
+    
   } catch (e) {
     return new Response("Worker Error: " + e.message, { status: 500, headers: corsHeaders });
   }
