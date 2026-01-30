@@ -1,9 +1,9 @@
 export async function onRequest(context) {
-  const { request, env } = context; // Pages 通过 context 传递参数
+  const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
-  // --- 1. 新手引导：检查配置是否完整 ---
-  // 如果 BUCKET 没绑定或密码没设，直接返回一个友好的引导页面
+
+  // --- 1. 新手引导 ---
   if (!env.BUCKET || !env.ADMIN_PASSWORD) {
     return new Response(`
       <!DOCTYPE html>
@@ -57,31 +57,21 @@ export async function onRequest(context) {
     "Access-Control-Expose-Headers": "Content-Length, Content-Range",
   };
 
-  // 1. 处理预检请求
   if (request.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  // 2. 静态资源避让
-  // 只有真正支撑页面显示的资源才走 Pages 托管
-  const staticFiles = [
-    "/",
-    "/index.html",
-    "/404.html",
-    "/theme.css",
-    "/logo.ico",
-    "/logo.svg",
-    "/favicon.ico"
-  ];
-
-  const isStaticAsset = 
-    staticFiles.includes(path) || 
-    path.startsWith("/js/");
+  // --- 2. 【核心修正】静态资源避让逻辑 ---
+  // 我们不再用正则猜，我们用“白名单”精准指定哪些走 Pages
+  const objectKey = decodeURIComponent(path).replace(/^\/+|\/+$/g, '');
+  const staticFiles = ["", "index.html", "404.html", "theme.css", "logo.ico", "logo.svg", "favicon.ico", "README.md", "LICENSE"];
+  
+  const isStaticAsset = staticFiles.includes(objectKey) || path.startsWith("/js/");
 
   if (isStaticAsset && request.method === "GET") {
     return context.next(); 
   }
 
   try {
-    // --- 1. 管理接口 (POST/DELETE/LIST) ---
+    // --- 3. 管理接口 (POST/DELETE/LIST) ---
     if (["POST", "DELETE"].includes(request.method) || (request.method === "GET" && path === "/list")) {
       if (!auth || auth !== env.ADMIN_PASSWORD) {
         return new Response("Unauthorized", { status: 401, headers: corsHeaders });
@@ -98,106 +88,73 @@ export async function onRequest(context) {
         const formData = await request.formData();
         const files = formData.getAll("file");
         const folder = formData.get("folder") || "";
-
         if (files.length === 0) return new Response("No files uploaded", { status: 400, headers: corsHeaders });
-
         const uploadResults = [];
         const cleanFolder = folder ? `${folder.replace(/\/+$/, '')}/` : "";
 
         for (const file of files) {
           if (file.size > 100 * 1024 * 1024) continue;
-
           let fileName = file.name.replace(/[^\w.-]/g, '_'); 
           let contentType = file.type;
-
           if (contentType.startsWith('image/') && !contentType.includes('svg')) {
              if (!fileName.toLocaleLowerCase().endsWith('.webp')) {
                 fileName = fileName.replace(/\.[^/.]+$/, "") + ".webp";
              }
              contentType = 'image/webp'; 
           }
-
           const key = `${cleanFolder}${Date.now()}-${fileName}`;
-          
           await env.BUCKET.put(key, file.stream(), { 
-            httpMetadata: { 
-              contentType: contentType,
-              cacheControl: 'public, max-age=31536000, immutable' 
-            } 
+            httpMetadata: { contentType, cacheControl: 'public, max-age=31536000, immutable' } 
           });
           uploadResults.push({ key, url: `${url.origin}/${key}` });
         }
-        
         return new Response(JSON.stringify(uploadResults), { 
           headers: { ...corsHeaders, "Content-Type": "application/json" } 
         });
       }
 
       if (request.method === "DELETE") {
-        const key = path.replace(/^\/+/, ''); // 清理开头的斜杠
+        const key = path.replace(/^\/+/, '');
         if (!key || key.includes('..')) return new Response("Invalid Key", { status: 400, headers: corsHeaders });
         await env.BUCKET.delete(key);
         return new Response("Deleted", { headers: corsHeaders });
       }
     }
 
-// --- 2. 公开读取 (GET) ---
-    const objectKey = decodeURIComponent(path).replace(/^\/+|\/+$/g, '');
-
+    // --- 4. 公开读取 (GET) 从 R2 获取 ---
     if (objectKey && request.method === "GET") {
+      // 允许的扩展名校验
       const allowedExtensions = /\.(webp|jpg|jpeg|png|gif|svg|ico|mp4|mov|webm|mp3|wav)$/i;
       if (!allowedExtensions.test(objectKey)) {
         return new Response("Forbidden Type", { status: 403, headers: corsHeaders });
       }
 
-try {
+      try {
         const rangeHeader = request.headers.get("range");
-        
-        // --- 修改点：动态构造参数对象，确保类型绝对正确 ---
-        const getOptions = {};
-        if (rangeHeader) {
-          getOptions.range = request.headers; // 直接透传 Headers 对象，SDK 最推荐这种做法
-        }
-
+        const getOptions = rangeHeader ? { range: request.headers } : {};
         const object = await env.BUCKET.get(objectKey, getOptions);
-        // ----------------------------------------------
 
+        // 如果 R2 找不到，尝试交给 Pages (万一有漏网的静态资源)
         if (object === null) return context.next();
 
         const headers = new Headers(corsHeaders);
-        
         const contentType = object.httpMetadata?.contentType || "application/octet-stream";
         headers.set("Content-Type", contentType);
         headers.set("etag", object.httpEtag);
         headers.set("Accept-Ranges", "bytes");
         headers.set("Cache-Control", "public, max-age=31536000, immutable");
-        headers.set("Content-Encoding", "identity");
 
-        let status = 200;
-
+        let status = rangeHeader ? 206 : 200;
         if (object.range) {
-          status = 206;
           const offset = object.range.offset ?? 0;
           const length = object.range.length ?? object.size;
-          const totalSize = object.size ?? length;
-          
-          headers.set("Content-Range", `bytes ${offset}-${offset + length - 1}/${totalSize}`);
+          headers.set("Content-Range", `bytes ${offset}-${offset + length - 1}/${object.size}`);
           headers.set("Content-Length", length.toString());
         } else {
           headers.set("Content-Length", (object.size ?? 0).toString());
         }
 
-        return new Response(object.body, {
-          headers,
-          status,
-          cf: {
-            encodeBodyTag: false,
-            minify: { javascript: false, css: false, html: false },
-            mirage: false,
-            polish: "off"
-          }
-        });
-
+        return new Response(object.body, { headers, status });
       } catch (r2Error) {
         return new Response(`Server Error: ${r2Error.message}`, { status: 500, headers: corsHeaders });
       }
@@ -207,6 +164,5 @@ try {
     return new Response("Worker Error: " + e.message, { status: 500, headers: corsHeaders });
   }
 
-  // 最终兜底：让 Pages 处理
   return context.next();
 }
