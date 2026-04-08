@@ -1,53 +1,53 @@
-# 🚀 liteGallery - 云端画廊
+# 🚀 liteGallery
 
-一个基于 **Cloudflare Pages + Functions + R2** 构建的轻量化图床。
+English | [中文](./README_zh.md)
 
-## 🌟 核心特性
+A lightweight image hosting solution built on **Cloudflare Pages + Functions + R2**.
 
-- **零成本运维**：完全运行在 Cloudflare 免费额度内，无需服务器。
-- **极致速度**：利用 Cloudflare 边缘网络缓存，图片支持长期缓存（一年），全球秒开。
-- **WebP 自动化**：前端自动处理图片，优化存储空间。
-- **全栈一体**：前端、后端、API 全部集成，无需手动配置跨域。
-- **智能指引**：内置配置检测引导，确保新手部署不迷路。
+---
 
-## 📦 第一步：Fork 本仓库
+## 🌟 Key Features
 
-点击页面右上角的 **Fork** 按钮，将本项目克隆到你的 GitHub 账号下。
+- **Zero Maintenance**: Runs entirely within Cloudflare's free tier—no servers required.
+- **Extreme Speed**: Leverages Cloudflare's Edge Network with support for long-term (1-year) image caching for global instant loading.
+- **WebP Automation**: Frontend automatically processes images to optimize storage and bandwidth.
+- **Full-Stack Integration**: Frontend, backend, and APIs are all-in-one; no manual CORS configuration needed.
+- **Smart Setup**: Built-in configuration guide to ensure a smooth deployment experience for beginners.
 
-## 🚢 第二步：连接 Cloudflare Pages
+## 📦 Step 1: Fork the Repository
 
-[**👉 点击此处进入 Cloudflare Pages 控制台 👈**](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages)
+Click the **Fork** button in the top right corner to clone this project to your GitHub account.
 
-1. 选择 **导入现有 Git 存储库**，并授权访问你刚才 Fork 的 `liteGallery` 仓库。
+## 🚢 Step 2: Connect to Cloudflare Pages
 
-2. 点击 **保存并部署**。
+[**👉 Click here to enter Cloudflare Pages Dashboard 👈**](https://dash.cloudflare.com/?to=/:account/workers-and-pages/create/pages)
 
-## 🛠️ 第三步：初始化配置（核心步骤）
+1. Select **Connect to Git**, and authorize access to the `liteGallery` repository you just forked.
+2. Click **Save and Deploy**.
 
-由于 R2 绑定和变量生效机制，请在首次部署完成后进入项目控制台：
+## 🛠️ Step 3: Initial Configuration (Crucial)
 
-**设置管理密码**：
+Due to how R2 bindings and environment variables take effect, please follow these steps in your project dashboard after the initial deployment:
 
-- **变量名称**: `ADMIN_PASSWORD`
-- **变量值**: `你的管理密码`
+### **Set Admin Password**
+- **Variable Name**: `ADMIN_PASSWORD`
+- **Value**: `YourSecurePassword`
 
-**绑定 R2 存储桶**：
+### **Bind R2 Bucket**
+- **Variable Name**: Must be `BUCKET`.
+- **R2 Bucket**: Select your existing R2 bucket.
 
-- **变量名称**: 必须填 `BUCKET`。
-- **R2 存储桶**: 选择你已有的存储桶。
+### **Apply Changes**
+- Go back to the **Deployments** tab.
+- Find your latest deployment, click the three dots on the right, and select **Retry deployment**.
 
-**触发生效**：
+## ⚙️ Advanced Configuration (Optional)
 
-- 回到 **部署** 页面
-- 找到最近的一次部署，点击右侧三个点，选择 **重试部署**。
+By default, `ALLOWED_ORIGIN` is set to `*` (allows access from any site).
+- **For better security**: Add an environment variable `ALLOWED_ORIGIN` and set its value to your specific domain.
 
-## ⚙️ 高级配置 (可选)
+## ⚖️ License & Disclaimer
 
-本项目代码默认 `ALLOWED_ORIGIN` 为 `*`，即允许任何网站调用：
-- **如果你想更安全**：可以在环境变量中添加 `ALLOWED_ORIGIN`，将其值设为你的域名。
+This project is open-sourced under the **[MIT](LICENSE)** license.
 
-## ⚖️ 许可与说明
-
-本项目采用 **[MIT](LICENSE)** 协议开源。
-
-此仓库按“现状”提供，项目初衷仅为博客配图自用。欢迎 Fork 随意折腾，但我可能无法回答你的 Issue。
+The repository is provided "as-is." It was originally created for personal blog image hosting. Feel free to fork and customize it, but please note that I may not be able to respond to Issues.
